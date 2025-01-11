@@ -1,176 +1,149 @@
-import java.util.*;
+import org.apache.commons.math3.linear.*;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 public class HillCipher {
+    public static void main(String[] args) {
+        // Key matrix (must be invertible modulo 26)
+        int[][] keyMatrix = {
+                {2, 15},
+                {11, 10}
+        };
 
-    // Convert a character to its corresponding number (A = 0, B = 1, ..., Z = 25)
-    public static int charToNum(char c) {
-        return c - 'a';
+        // Plaintext
+        String plaintext = "wanhariz nie boss";
+
+        // Encrypt the plaintext
+        String ciphertext = encrypt(plaintext, keyMatrix);
+        System.out.println("Ciphertext: " + ciphertext);
+
+        // Decrypt the ciphertext
+        String decryptedText = decrypt(ciphertext, keyMatrix);
+        System.out.println("Decrypted Text: " + decryptedText);
     }
 
-    // Convert a number to its corresponding character
-    public static char numToChar(int n) {
-        return (char) (n + 'a');
-    }
-
-    // Matrix multiplication (mod 26)
-    public static int[] multiplyMatrix(int[][] matrix, int[] vector) {
-        int size = matrix.length;
-        int[] result = new int[size];
-        for (int i = 0; i < size; i++) {
-            result[i] = 0;
-            for (int j = 0; j < size; j++) {
-                result[i] = (result[i] + matrix[i][j] * vector[j]) % 26;
+    // Function to encrypt plaintext using Hill Cipher
+    public static String encrypt(String plaintext, int[][] keyMatrix) {
+        System.out.println("Plaintext: " + plaintext);
+        List<Integer> plaintextNumbers = new ArrayList<>();
+        for (char c : plaintext.toUpperCase().toCharArray()) {
+            if (Character.isLetter(c)) {
+                plaintextNumbers.add(c - 'A');
             }
         }
-        return result; // Should return a 1D array
-    }
+        System.out.println("Plaintext Numerical Values: " + plaintextNumbers);
 
-    // Matrix inverse modulo 26 (only works for invertible matrices)
-    public static int[][] inverseMatrix(int[][] matrix, int mod) {
-        int size = matrix.length;
-        int[][] augmented = new int[size][size * 2];
-    
-        // Create an augmented matrix [matrix | identity]
-        for (int i = 0; i < size; i++) {
-            for (int j = 0; j < size; j++) {
-                augmented[i][j] = matrix[i][j];
-                augmented[i][j + size] = (i == j) ? 1 : 0;
-            }
+        int matrixSize = keyMatrix.length;
+        while (plaintextNumbers.size() % matrixSize != 0) {
+            plaintextNumbers.add('X' - 'A'); // Padding with 'X' (23)
         }
-    
-        // Perform row reduction
-        for (int i = 0; i < size; i++) {
-            int pivotRow = -1;
-            for (int j = i; j < size; j++) {
-                if (augmented[j][i] != 0) {
-                    pivotRow = j;
-                    break;
+
+        int[] ciphertextNumbers = new int[plaintextNumbers.size()];
+        for (int i = 0; i < plaintextNumbers.size(); i += matrixSize) {
+            for (int row = 0; row < matrixSize; row++) {
+                int sum = 0;
+                for (int col = 0; col < matrixSize; col++) {
+                    sum += keyMatrix[row][col] * plaintextNumbers.get(i + col);
                 }
-            }
-    
-            if (pivotRow == -1) {
-                throw new IllegalArgumentException("Matrix is not invertible");
-            }
-    
-            // Swap rows
-            int[] temp = augmented[i];
-            augmented[i] = augmented[pivotRow];
-            augmented[pivotRow] = temp;
-    
-            // Normalize the pivot row
-            int inversePivot = modInverse(augmented[i][i], mod);
-            for (int j = 0; j < 2 * size; j++) {
-                augmented[i][j] = (augmented[i][j] * inversePivot) % mod;
-            }
-    
-            // Eliminate other rows
-            for (int j = 0; j < size; j++) {
-                if (i != j) {
-                    int factor = augmented[j][i];
-                    for (int k = 0; k < 2 * size; k++) {
-                        augmented[j][k] = (augmented[j][k] - factor * augmented[i][k]) % mod;
-                        if (augmented[j][k] < 0) {
-                            augmented[j][k] += mod;
-                        }
-                    }
-                }
+                ciphertextNumbers[i + row] = ((sum % 26) + 26) % 26; // Apply modulo 26
             }
         }
-    
-        // Extract the inverse matrix
-        int[][] inverse = new int[size][size];
-        for (int i = 0; i < size; i++) {
-            for (int j = 0; j < size; j++) {
-                inverse[i][j] = augmented[i][j + size];
-            }
-        }
-        return inverse;
-    }
-    
-    // Modulo inverse
-    public static int modInverse(int a, int m) {
-        a = a % m;
-        for (int x = 1; x < m; x++) {
-            if ((a * x) % m == 1) {
-                return x;
-            }
-        }
-        return -1; // No modular inverse exists
-    }
+        System.out.println("Ciphertext Numerical Values: " + Arrays.toString(ciphertextNumbers));
 
-    // Encrypt plaintext
-    public static String encrypt(String plaintext, int[][] matrix) {
         StringBuilder ciphertext = new StringBuilder();
-        plaintext = plaintext.replaceAll("[^a-z]", ""); // Remove non-alphabetic characters
-        int len = plaintext.length();
-        // Pad plaintext if necessary
-        if (len % matrix.length != 0) {
-            int paddingLength = matrix.length - (len % matrix.length);
-            for (int i = 0; i < paddingLength; i++) {
-                plaintext += "x"; // Add 'x' as padding
-            }
-        }
-
-        // Process in blocks of size 3 (for 3x3 matrix)
-        for (int i = 0; i < plaintext.length(); i += matrix.length) {
-            int[] block = new int[matrix.length];
-            for (int j = 0; j < matrix.length; j++) {
-                block[j] = charToNum(plaintext.charAt(i + j));
-            }
-
-            // Now using a 1D array result from multiplyMatrix
-            int[] encryptedBlock = multiplyMatrix(matrix, block);
-
-            for (int num : encryptedBlock) {
-                ciphertext.append(numToChar(num));
-            }
+        for (int num : ciphertextNumbers) {
+            ciphertext.append((char) ('A' + num));
         }
         return ciphertext.toString();
     }
 
-    // Decrypt ciphertext
-    public static String decrypt(String ciphertext, int[][] matrix) {
-        StringBuilder plaintext = new StringBuilder();
-        int[][] inverse = inverseMatrix(matrix, 26);
+    public static String decrypt(String ciphertext, int[][] keyMatrix) {
+        System.out.println("Ciphertext: " + ciphertext);
+        RealMatrix inverseKeyMatrix = calculateModInverse(keyMatrix, 26);
+        if (inverseKeyMatrix == null) {
+            throw new IllegalArgumentException("Key matrix is not invertible modulo 26.");
+        }
 
-        // Process in blocks of size 3 (for 3x3 matrix)
-        for (int i = 0; i < ciphertext.length(); i += matrix.length) {
-            int[] block = new int[matrix.length];
-            for (int j = 0; j < matrix.length; j++) {
-                block[j] = charToNum(ciphertext.charAt(i + j));
-            }
+        System.out.println("Inverse Key Matrix: ");
+        for (int i = 0; i < inverseKeyMatrix.getRowDimension(); i++) {
+            System.out.println(Arrays.toString(inverseKeyMatrix.getRow(i)));
+        }
 
-            // Now using a 1D array result from multiplyMatrix
-            int[] decryptedBlock = multiplyMatrix(inverse, block);
-
-            for (int num : decryptedBlock) {
-                plaintext.append(numToChar(num));
+        List<Integer> ciphertextNumbers = new ArrayList<>();
+        for (char c : ciphertext.toUpperCase().toCharArray()) {
+            if (Character.isLetter(c)) {
+                ciphertextNumbers.add(c - 'A');
             }
         }
 
-        // Remove padding
-        return plaintext.toString().replaceAll("x+$", "");
+        int matrixSize = keyMatrix.length;
+        int[] plaintextNumbers = new int[ciphertextNumbers.size()];
+        for (int i = 0; i < ciphertextNumbers.size(); i += matrixSize) {
+            for (int row = 0; row < matrixSize; row++) {
+                int sum = 0;
+                for (int col = 0; col < matrixSize; col++) {
+                    sum += (int) Math.round(inverseKeyMatrix.getEntry(row, col)) * ciphertextNumbers.get(i + col);
+                }
+                plaintextNumbers[i + row] = ((sum % 26) + 26) % 26;
+            }
+        }
+        System.out.println("Decrypted Numerical Values: " + Arrays.toString(plaintextNumbers));
+
+        StringBuilder plaintext = new StringBuilder();
+        for (int num : plaintextNumbers) {
+            plaintext.append((char) ('A' + num));
+        }
+
+        // Remove padding (if any)
+        while (plaintext.length() > 0 && plaintext.charAt(plaintext.length() - 1) == 'X') {
+            plaintext.setLength(plaintext.length() - 1);
+        }
+
+        return plaintext.toString();
     }
-    public static String removePadding(String decryptedText) {
-        return decryptedText.replaceAll("x+$", ""); // Remove trailing 'x' padding
-    }
 
-    public static void main(String[] args) {
-        String plaintext = "harizisveryhandsome";
+    // Function to calculate the modular inverse of a matrix
+    private static RealMatrix calculateModInverse(int[][] matrix, int mod) {
+        int size = matrix.length;
+        RealMatrix realMatrix = new Array2DRowRealMatrix(size, size);
 
-        // 3x3 matrix for encryption (example matrix)
-        int[][] matrix = {
-                { 18, 14, 11 },
-                { 22, 25, 24 },
-                { 13, 25, 4 }
-        };
+        // Copy the input matrix to the RealMatrix
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                realMatrix.setEntry(i, j, matrix[i][j]);
+            }
+        }
 
-        // Encrypt the plaintext
-        String ciphertext = encrypt(plaintext, matrix);
-        System.out.println("Ciphertext: " + ciphertext);
+        // Calculate determinant
+        double determinant = new LUDecomposition(realMatrix).getDeterminant();
+        determinant = ((determinant % mod) + mod) % mod;
 
-        // Decrypt the ciphertext
-        String decryptedText = decrypt(ciphertext, matrix);
-        System.out.println("Decrypted Text: " + decryptedText);
+        // Find modular inverse of determinant
+        int determinantInverse = -1;
+        for (int i = 1; i < mod; i++) {
+            if ((determinant * i) % mod == 1) {
+                determinantInverse = i;
+                break;
+            }
+        }
+        if (determinantInverse == -1) {
+            throw new IllegalArgumentException("Determinant has no modular inverse.");
+        }
+
+        // Calculate adjugate matrix
+        RealMatrix adjugateMatrix = new LUDecomposition(realMatrix).getSolver().getInverse().scalarMultiply(determinant);
+
+        // Convert adjugate to integer modulo matrix
+        RealMatrix modInverse = new Array2DRowRealMatrix(size, size);
+        for (int i = 0; i < size; i++) {
+            for (int j = 0; j < size; j++) {
+                double value = determinantInverse * adjugateMatrix.getEntry(i, j);
+                modInverse.setEntry(i, j, ((int) Math.round(value) % mod + mod) % mod);
+            }
+        }
+
+        return modInverse;
     }
 }
