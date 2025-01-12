@@ -16,20 +16,22 @@ public class MathCrypto {
         System.out.println("Generated Key Matrix:");
         printMatrix(matrix);
 
-        String ciphertext = encrypt(plaintext, matrix);
-        System.out.println("Ciphertext: " + ciphertext);
-
         String key = generateRandomKey(plaintext.length());
         System.out.println("Generated Random OTP Key: " + key);
 
-        String cipherText2 = OTPEncryption.performOtpEncryption(ciphertext, key);
-        System.out.println("Encrypted Text: " + cipherText2);
+        String cipherText = OTPEncryption.performOtpEncryption(plaintext, key);
+        System.out.println("Encrypted Text: " + cipherText);
 
-        String decryptedText = OTPEncryption.performOtpDecryption(cipherText2, key);
-        System.out.println("Decrypted Text: " + decryptedText);
+        String ciphertext2 = encrypt(cipherText, matrix);
+        System.out.println("Ciphertext: " + ciphertext2);
 
-        String decryptedText2 = decrypt(ciphertext, matrix);
-        System.out.println("Decrypted Plaintext: " + decryptedText2);
+
+        String decryptedText = decrypt(ciphertext2, matrix);
+        System.out.println("Decrypted Plaintext: " + decryptedText);
+
+        String decryptedText2 = OTPEncryption.performOtpDecryption(decryptedText, key);
+        System.out.println("Decrypted Text: " + decryptedText2);
+
 
         scanner.close();
     }
